@@ -19,13 +19,31 @@ const pie = d3.pie()
     {name: 'c', price: 300}
 ]) */
 
+
+
 const arcPath = d3.arc()
     .outerRadius(dims.radius)
     .innerRadius(dims.radius/2)
 
+const colour = d3.scaleOrdinal(d3['schemeSet2'])
+
 //update function
 const update = (data) => {
-    console.log(data)
+
+    colour.domain(data.map(d => d.name))
+    //data to path
+    const paths = graph.selectAll('path')
+        .data(pie(data))
+
+    paths.enter()
+        .append('path')
+        .attr('class', 'arc')
+        //autogenerate the path and apply it to the d attribute
+        .attr('d', arcPath)
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 3)
+        // go thru the pie() > array of object > d.name become d.data.name
+        .attr('fill', d => colour(d.data.name))
 }
 
 //this can be a boilerplate for change listening LET not const!
