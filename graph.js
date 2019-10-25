@@ -20,30 +20,56 @@ const pie = d3.pie()
 ]) */
 
 
-
 const arcPath = d3.arc()
     .outerRadius(dims.radius)
     .innerRadius(dims.radius/2)
 
 const colour = d3.scaleOrdinal(d3['schemeSet2'])
 
+const legendGroup = svg.append('g')
+    .attr('transform', `translate(${dims.width + 40}, 10)`)
+//use a plugin here
+const legend = d3.legendColor()
+    .shape('circle')
+    .shapePadding(10)
+    .scale(colour)
+
 //update function
 const update = (data) => {
 
     colour.domain(data.map(d => d.name))
+    legendGroup.call(legend)
+    legendGroup.selectAll('text').attr('fill', '#fff')
     //data to path
     const paths = graph.selectAll('path')
         .data(pie(data))
+
+    paths.exit()
+        .transition().duration(750)
+        .attrTween('d', arcTweenExit)
+        .remove()
+    //update
+    paths.attr('d', arcPath)
+        .transition().duration(750)
+        .attrTween('d', arcTweenUpdate)
 
     paths.enter()
         .append('path')
         .attr('class', 'arc')
         //autogenerate the path and apply it to the d attribute
-        .attr('d', arcPath)
+        //.attr('d', arcPath) > no need becouse of the arcTweenEnter
         .attr('stroke', '#fff')
         .attr('stroke-width', 3)
         // go thru the pie() > array of object > d.name become d.data.name
         .attr('fill', d => colour(d.data.name))
+        .each(function(d){ this._current = d }) //always update
+        .transition().duration(750)
+            .attrTween('d', arcTweenEnter)
+
+    graph.selectAll('path')
+        .on('mouseover', handleMouseOver)
+        .on('mouseout', handleMouseOut)
+        .on('click', handleClick)
 }
 
 //this can be a boilerplate for change listening LET not const!
@@ -68,3 +94,44 @@ db.collection('hifi').onSnapshot(res => {
     });
     update(data)
 })
+
+const arcTweenEnter = (d) => {
+    let i = d3.interpolate(d.endAngle, d.startAngle)
+    //t=0 > start=end
+    return function(t) {
+        d.startAngle = i(t)
+        return arcPath(d)
+    }
+}
+const arcTweenExit = (d) => {
+    let i = d3.interpolate(d.startAngle, d.endAngle)
+    //t=0 > start=end
+    return function(t) {
+        d.startAngle = i(t)
+        return arcPath(d)
+    }
+}
+//function(using 'this')
+function arcTweenUpdate(d) {
+    //old(current) and new object
+    let i = d3.interpolate(this._current, d)
+    this._current = i(1)// or: d
+    return function(t) {
+        return arcPath(i(t))
+    }
+}
+
+const handleMouseOver = (d, i, n) => {
+    d3.select(n[i])
+        .transition('changeSliceFill').duration(300)
+        .attr('fill', '#fff')
+}
+const handleMouseOut = (d, i, n) => {
+    d3.select(n[i])
+        .transition('changeSliceFill').duration(300)
+        .attr('fill', colour(d.data.name))
+}
+const handleClick = (d) => {
+    const id = d.data.id
+    db.collection('hifi').doc(id).delete()
+}
