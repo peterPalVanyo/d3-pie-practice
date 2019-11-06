@@ -5,7 +5,7 @@ const svg = d3.select('.canvas')
     .append('svg')
     .attr('width', dims.width + 150)
     .attr('height', dims.height + 150)
-
+//group where every elememts goes
 const graph = svg.append('g')
     .attr('transform', `translate(${cent.x}, ${cent.y})`)
 
@@ -33,6 +33,17 @@ const legend = d3.legendColor()
     .shape('circle')
     .shapePadding(10)
     .scale(colour)
+//access to the tip library
+const tip = d3.tip()
+    .attr('class', 'tip card')
+    .html(d => {
+        let content= `<div class="name">${d.data.name}</div>`
+        content += `<div class="cost">${d.data.price}</div>`
+        content += `<div class="delete">Click slice to delete</div>`
+        return content
+    })
+
+graph.call(tip)
 
 //update function
 const update = (data) => {
@@ -67,8 +78,15 @@ const update = (data) => {
             .attrTween('d', arcTweenEnter)
 
     graph.selectAll('path')
-        .on('mouseover', handleMouseOver)
-        .on('mouseout', handleMouseOut)
+        .on('mouseover', (d, i, n) => {
+            //n[i] > instead of this
+            tip.show(d, n[i])
+            handleMouseOver(d, i, n)
+        })
+        .on('mouseout', (d, i, n) => {
+            tip.hide()
+            handleMouseOut(d, i, n)
+        })
         .on('click', handleClick)
 }
 
